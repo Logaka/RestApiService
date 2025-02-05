@@ -1,0 +1,245 @@
+openapi: 3.0.3
+info:
+  title: RestApi Service
+  description: REST API сервис с использованием Spring Boot, который будет принимать данные от условного "сенсора". Сенсор будет отправлять HTTP-запросы с измерениями, содержащими информацию о температуре и погодных условиях.
+  version: 0.0.1
+servers:
+    - url: http://localhost:8080/
+      description: Dev server
+paths:
+  /sensors/registration:
+    post:
+      summary: Регистрация нового сенсора
+      description: Создает новый сенсор с указанным именем
+      tags:
+        - Sensor
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+      responses:
+        '200':
+          description: Сенсор успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  name:
+                    type: string
+                    example: sensor123
+        '400':
+          description: Некорректный запрос (например, пустое имя)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    example: 2025-02-05 16:20:02
+                  message: 
+                    type: string
+                    example: Sensor name cannot be empty
+        '409':
+          description: Сенсор с таким именем уже существует
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    example: 2025-02-05 16:20:02
+                  message: 
+                    type: string
+                    example: name sensor already exist
+                    
+  /sensors/generateToken:                
+    post:
+      summary: аутентификация пользователя
+      description: Создает токен для дальнейшей работы с эндпойнтами
+      tags: 
+        - Token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Sensor'
+      responses:
+        '200':
+          description: Сенсор успешно зарегистрирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
+        '400':
+          description: Некорректный запрос (например, пустое имя)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    example: 2025-02-05 16:20:02
+                  message: 
+                    type: string
+                    example: Sensor name cannot be empty
+        '409':
+          description: Сенсор с таким именем не существует
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timestamp:
+                    type: string
+                    example: 2025-02-05 16:20:02
+                  message: 
+                    type: string
+                    example: Sensor named sensor not found          
+      
+  /measurements/add:
+    post:
+      summary: Добавление нового измерения
+      description: Отправляет измерение с сенсора, включая температуру и погодные условия. Требуется JWT аутентификация
+      tags:
+        - Measurement
+      security:
+        - BearerAuth: []  
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Measurement'
+      responses:
+        '200':
+          description: Измерение успешно добавлено
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                    example: 1
+                  value:
+                    type: number
+                    example: 23.5
+                  raining:
+                    type: boolean
+                    example: true
+                  sensor:
+                    $ref: '#/components/schemas/Sensor'
+        '400':
+          description: Некорректный запрос (например, неверный формат данных)
+        '404':
+          description: Сенсор не найден
+          
+  /measurements:
+    get:
+      summary: Получить все измерения
+      description: Возвращает список всех измерений. Требуется аутентификация через JWT-токен.
+      tags:
+        - Measurement
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ. Список измерений.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Measurements'
+        '401':
+          description: Неавторизованный доступ (отсутствует или неверный токен)
+        '403':
+          description: Доступ запрещен
+  /measurements/rainyDaysCount:
+    get:
+      summary: Получить количество дождливых дней
+      description: Возвращает количество дней, когда были зафиксированы осадки. Требуется аутентификация через JWT-токен.
+      tags:
+        - Measurement
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Успешный ответ. Количество дождливых дней.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RainyDaysCount'
+        '401':
+          description: Неавторизованный доступ (отсутствует или неверный токен)
+        '403':
+          description: Доступ запрещен
+components:
+  securitySchemes:
+      BearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT  
+  schemas:
+    Sensor:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          example: "sensor123"
+    Token:
+        type: string
+        example: "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJzZW5zb3IiLCJpYXQiOjE3Mzg3MTI3ODEsImV4cCI6MTczODczMDc4MX0.G_mVdW6TZLFwfZ49BsJkosDuw4scVkJum3-Y7_C2fZy5OjJRwrq-m6_tdUcYkUqi"
+    Measurement:
+      type: object
+      required:
+        - value
+        - raining
+        - sensor
+      properties:
+        value:
+          type: number
+          format: double
+          minimum: -100
+          maximum: 100
+          example: 23.5
+        raining:
+          type: boolean
+          example: true
+        sensor:
+          $ref: '#/components/schemas/Sensor'
+
+    Measurements:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1252
+        value:
+          type: number
+          format: double
+          example: 20.90385348403225
+        raining:
+          type: boolean
+          example: false
+        sensor:
+          $ref: '#/components/schemas/Sensor'
+          
+    RainyDaysCount:
+      type: object
+      properties:
+        rainyDaysCount:
+          type: integer
+          example: 492      
